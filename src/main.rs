@@ -48,7 +48,9 @@ struct Benchmarker {
 
 impl Benchmarker {
     async fn new(config: BenchmarkConfig) -> Result<Self> {
-        let client = Arc::new(JsonRpcClient::new(HttpTransport::new(config.node_url.clone())));
+        let client = Arc::new(JsonRpcClient::new(HttpTransport::new(
+            config.node_url.clone(),
+        )));
         Ok(Self { config, client })
     }
 
@@ -59,15 +61,21 @@ impl Benchmarker {
 
     async fn check_status(&self, tx_hash: TxHash) -> Result<TransactionReceipt> {
         let poll_interval = self.config.poll_interval.as_millis() as u64;
-        let response = TxWaiter::new(tx_hash, &self.client).with_interval(poll_interval).await?;
+        let response = TxWaiter::new(tx_hash, &self.client)
+            .with_interval(poll_interval)
+            .await?;
         Ok(response.receipt)
     }
 
     async fn run_benchmark(&self) -> Result<BenchmarkMetrics> {
         let mut pending_transactions: HashMap<TxHash, Instant> = HashMap::new();
 
-        let txs = prepare_txs(&self.client, &self.config.accounts, self.config.total_transactions)
-            .await?;
+        let txs = prepare_txs(
+            &self.client,
+            &self.config.accounts,
+            self.config.total_transactions,
+        )
+        .await?;
 
         println!("sending {} txs", txs.len());
 
@@ -77,8 +85,10 @@ impl Benchmarker {
         // Submit transactions in parallel batches
         let batch_size = self.config.accounts.len();
         for batch in txs.chunks(batch_size) {
-            let futures: Vec<_> =
-                batch.iter().map(|tx| self.submit_transaction(tx.clone())).collect();
+            let futures: Vec<_> = batch
+                .iter()
+                .map(|tx| self.submit_transaction(tx.clone()))
+                .collect();
             let results = join_all(futures).await;
 
             for result in results {
@@ -197,8 +207,13 @@ async fn prepare_txs(
         sender_account.set_block_id(BlockId::Tag(BlockTag::Pending));
 
         // Do spawn first
-        let spawn_call = SpawnAndMoveAction::new(contract, &sender_account).spawn().send().await?;
-        TxWaiter::new(spawn_call.transaction_hash, provider).await.unwrap();
+        let spawn_call = SpawnAndMoveAction::new(contract, &sender_account)
+            .spawn()
+            .send()
+            .await?;
+        TxWaiter::new(spawn_call.transaction_hash, provider)
+            .await
+            .unwrap();
 
         sender_accounts.push((sender_account, signer));
     }
@@ -208,8 +223,10 @@ async fn prepare_txs(
 
     // initialize account's starting nonce
     for (sender_account, _) in &sender_accounts {
-        let nonce =
-            sender_account.get_nonce().await.context("failed to get account's init nonce")?;
+        let nonce = sender_account
+            .get_nonce()
+            .await
+            .context("failed to get account's init nonce")?;
         nonces.insert(sender_account.address(), nonce);
     }
 
@@ -240,8 +257,10 @@ async fn tx(
         max_price_per_unit: 20000005000,
     };
 
-    let l2_gas_bounds =
-        katana_primitives::fee::ResourceBounds { max_amount: 0, max_price_per_unit: 0 };
+    let l2_gas_bounds = katana_primitives::fee::ResourceBounds {
+        max_amount: 0,
+        max_price_per_unit: 0,
+    };
 
     let nonce_da_mode = katana_primitives::da::DataAvailabilityMode::L1;
     let fee_da_mode = katana_primitives::da::DataAvailabilityMode::L1;
@@ -269,9 +288,15 @@ async fn tx(
         signature: vec![signature.r, signature.s],
         nonce,
         resource_bounds: ResourceBoundsMapping {
-            l1_gas: ResourceBounds { max_amount: 20000005000, max_price_per_unit: 20000005000 },
+            l1_gas: ResourceBounds {
+                max_amount: 20000005000,
+                max_price_per_unit: 20000005000,
+            },
             // L2 resources are hard-coded to 0
-            l2_gas: ResourceBounds { max_amount: 0, max_price_per_unit: 0 },
+            l2_gas: ResourceBounds {
+                max_amount: 0,
+                max_price_per_unit: 0,
+            },
         },
         // Fee market has not been been activated yet so it's hard-coded to be 0
         tip: 0,
@@ -398,8 +423,6 @@ mod abigen {
         }
     }
     impl<A: starknet::accounts::ConnectedAccount + Sync> SpawnAndMoveAction<A> {
-        #[allow(clippy::ptr_arg)]
-        #[allow(clippy::too_many_arguments)]
         pub fn move_getcall(&self, direction: &Direction) -> starknet::core::types::Call {
             use cainome::cairo_serde::CairoSerde;
             let mut __calldata = Vec::new();
@@ -415,27 +438,8 @@ mod abigen {
                 calldata: __calldata,
             }
         }
-        #[allow(clippy::ptr_arg)]
-        #[allow(clippy::too_many_arguments)]
-        pub fn r#move(&self, direction: &Direction) -> starknet::accounts::ExecutionV1<'_, A> {
-            use cainome::cairo_serde::CairoSerde;
-            let mut __calldata = Vec::new();
-            __calldata.extend(Direction::cairo_serialize(direction));
-            let __call = starknet::core::types::Call {
-                to: self.address,
-                selector: ::starknet::core::types::Felt::from_raw([
-                    67542746491835804,
-                    12863064398400549321,
-                    17438469324404153095,
-                    10377031306845665431,
-                ]),
-                calldata: __calldata,
-            };
-            self.account.execute_v1(vec![__call])
-        }
-        #[allow(clippy::ptr_arg)]
-        #[allow(clippy::too_many_arguments)]
-        pub fn spawn(&self) -> starknet::accounts::ExecutionV1<'_, A> {
+
+        pub fn spawn(&self) -> starknet::accounts::ExecutionV3<'_, A> {
             let mut __calldata = Vec::new();
             let __call = starknet::core::types::Call {
                 to: self.address,
@@ -447,7 +451,8 @@ mod abigen {
                 ]),
                 calldata: __calldata,
             };
-            self.account.execute_v1(vec![__call])
+
+            self.account.execute_v3(vec![__call])
         }
     }
 

@@ -2,7 +2,6 @@
 edition = "2021"
 name = "katana-load-test"
 license = "Apache-2.0"
-license-file = "LICENSE"
 repository = "https://github.com/kariy/katana-load-test/"
 version = "0.1.0"
 
@@ -13,7 +12,7 @@ futures = "0.3.31"
 reqwest = "0.12.12"
 serde = "1.0.217"
 starknet = "0.13.0"
-tokio = "1.43.0"
+tokio = { version = "1.43.0", features = ["full"] }
 url = "2.5.4"
 
 katana-node-bindings = { git = "https://github.com/dojoengine/dojo" }
