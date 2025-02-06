@@ -21,3 +21,6 @@ dojo-utils = { git = "https://github.com/dojoengine/dojo" }
 cainome = { git = "https://github.com/cartridge-gg/cainome", tag = "v0.4.12", features = [
 	"abigen-rs",
 ] }
+chrono = "0.4.39"
+jiff = { version = "0.1.29", features = ["serde"] }
+serde_json = { version = "1.0.138", features = ["arbitrary_precision"] }

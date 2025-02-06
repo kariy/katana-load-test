@@ -1,3 +1,5 @@
+mod result;
+
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -12,6 +14,8 @@ use katana_primitives::contract::Nonce;
 use katana_primitives::transaction::TxHash;
 use katana_primitives::utils::transaction::compute_invoke_v3_tx_hash;
 use katana_primitives::{felt, Felt};
+use result::{BenchmarkResult, ResultsStorage};
+use serde::{Deserialize, Serialize};
 use starknet::accounts::{
     Account, ConnectedAccount, ExecutionEncoder, ExecutionEncoding, SingleOwnerAccount,
 };
@@ -27,6 +31,7 @@ use starknet::signers::{LocalWallet, Signer};
 use tokio;
 use url::Url;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct BenchmarkMetrics {
     total_transactions: u64,
     avg_latency: Duration,
@@ -174,11 +179,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let benchmarker = Benchmarker::new(config).await?;
     let metrics = benchmarker.run_benchmark().await?;
 
-    println!("Benchmark Results:");
-    println!("Total Transactions: {}", metrics.total_transactions);
-    println!("Average Latency: {:?}", metrics.avg_latency);
-    println!("TPS: {:.2}", metrics.tps);
-    println!("Total Duration: {:?}", metrics.total_duration);
+    let result = BenchmarkResult { metrics };
+
+    let storage = ResultsStorage::new(PathBuf::from("benchmark_results"));
+    storage.save_result(result.clone()).await?;
+
+    // Generate and display comparison report
+    let report = storage.generate_comparison_report(&result).await?;
+    println!("{report}");
 
     Ok(())
 }
