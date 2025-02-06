@@ -147,15 +147,22 @@ struct Cli {
 
     #[arg(long)]
     total_txs: u64,
-
-    #[arg(long = "db")]
-    db: PathBuf,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    use katana_node_bindings::Katana;
+    use std::env;
+
     let args = Cli::parse();
-    let node = katana_node_bindings::Katana::new().spawn();
+
+    let katana = if let Ok(path) = env::var("KATANA_PATH") {
+        Katana::at(path)
+    } else {
+        Katana::new()
+    };
+
+    let node = katana.spawn();
 
     let config = BenchmarkConfig {
         node_url: args.url.clone(),
