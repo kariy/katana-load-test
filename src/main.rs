@@ -152,6 +152,9 @@ struct Cli {
 
     #[arg(long)]
     total_txs: u64,
+
+    #[arg(long, default_value_t = 10)]
+    total_accounts: u16,
 }
 
 #[tokio::main]
@@ -167,7 +170,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Katana::new()
     };
 
-    let node = katana.spawn();
+    let node = katana.accounts(args.total_accounts).spawn();
 
     let config = BenchmarkConfig {
         node_url: args.url.clone(),
