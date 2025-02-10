@@ -9,7 +9,7 @@ use abigen::{Direction, SpawnAndMoveAction};
 use anyhow::{Context, Result};
 use clap::Parser;
 use dojo_utils::TransactionWaiter as TxWaiter;
-use futures::future::join_all;
+use futures::future::{join_all, try_join_all};
 use katana_primitives::contract::Nonce;
 use katana_primitives::transaction::TxHash;
 use katana_primitives::utils::transaction::compute_invoke_v3_tx_hash;
@@ -21,8 +21,7 @@ use starknet::accounts::{
 };
 use starknet::core::types::{
     BlockId, BlockTag, BroadcastedInvokeTransaction, BroadcastedInvokeTransactionV3, Call,
-    DataAvailabilityMode, ExecutionResult, ResourceBounds, ResourceBoundsMapping,
-    TransactionReceipt,
+    DataAvailabilityMode, ResourceBounds, ResourceBoundsMapping, TransactionReceipt,
 };
 use starknet::providers::jsonrpc::HttpTransport;
 use starknet::providers::JsonRpcClient;
@@ -33,9 +32,15 @@ use url::Url;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct BenchmarkMetrics {
-    total_transactions: u64,
-    avg_latency: Duration,
+    /// transaction per second
     tps: f64,
+    /// steps per second
+    sps: f64,
+    /// total transactions sent throughout the benchmark
+    total_transactions: u64,
+    /// the average latency for each transaction submission
+    avg_latency: Duration,
+    /// the total duration of which the benchmark routine was executed
     total_duration: Duration,
 }
 
@@ -73,7 +78,8 @@ impl Benchmarker {
     }
 
     async fn run_benchmark(&self) -> Result<BenchmarkMetrics> {
-        let mut pending_transactions: HashMap<TxHash, Instant> = HashMap::new();
+        let mut pending_txs: Vec<(TxHash, Instant)> =
+            Vec::with_capacity(self.config.total_transactions as usize);
 
         let txs = prepare_txs(
             &self.client,
@@ -98,34 +104,32 @@ impl Benchmarker {
 
             for result in results {
                 let tx_hash = result?;
-                pending_transactions.insert(tx_hash, Instant::now());
+                pending_txs.push((tx_hash, Instant::now()));
             }
         }
 
         let submission_duration = submission_start.elapsed();
 
-        // Poll for completion of last transaction only
-        let last_tx_hash = pending_transactions.keys().last().cloned();
+        dbg!(pending_txs.len());
 
-        if let Some(tx_hash) = last_tx_hash {
-            match self.check_status(tx_hash).await {
-                Ok(status) => match status.execution_result() {
-                    ExecutionResult::Succeeded => {
-                        // Since we waited for last tx, assume all prior ones succeeded
-                        pending_transactions.clear();
-                    }
-                    ExecutionResult::Reverted { .. } => {
-                        // Since we waited for last tx, assume all prior ones failed
-                        pending_transactions.clear();
-                    }
-                },
+        // Poll for completion of last transaction only
+        let last_tx = pending_txs.last();
+
+        if let Some((tx_hash, ..)) = last_tx {
+            match self.check_status(*tx_hash).await {
+                Ok(..) => {}
                 Err(e) => {
-                    eprintln!("Failed to check status for {}", e);
+                    eprintln!("Failed to check status: {e}");
                 }
             }
         }
 
         let total_duration = start_time.elapsed();
+
+        // Calculate steps per second
+        let tx_hashes = pending_txs.iter().map(|(h, _)| *h).collect::<Vec<TxHash>>();
+        let total_steps = self.total_steps(&tx_hashes).await?;
+        let sps = total_steps as f64 / total_duration.as_secs_f64();
 
         // Use submission duration divided by number of transactions for avg latency
         let avg_latency = if self.config.total_transactions > 0 {
@@ -138,10 +142,48 @@ impl Benchmarker {
 
         Ok(BenchmarkMetrics {
             tps,
+            sps,
             avg_latency,
             total_duration,
             total_transactions: self.config.total_transactions,
         })
+    }
+
+    async fn total_steps(&self, txs: &[TxHash]) -> Result<u64> {
+        let receipts = self.collect_receipts(txs).await?;
+
+        let total = receipts.iter().fold(0u64, |acc, receipt| match receipt {
+            TransactionReceipt::Invoke(r) => {
+                acc + r.execution_resources.computation_resources.steps
+            }
+            TransactionReceipt::L1Handler(r) => {
+                acc + r.execution_resources.computation_resources.steps
+            }
+            TransactionReceipt::Declare(r) => {
+                acc + r.execution_resources.computation_resources.steps
+            }
+            TransactionReceipt::Deploy(r) => {
+                acc + r.execution_resources.computation_resources.steps
+            }
+            TransactionReceipt::DeployAccount(r) => {
+                acc + r.execution_resources.computation_resources.steps
+            }
+        });
+
+        Ok(total)
+    }
+
+    async fn collect_receipts(&self, txs: &[TxHash]) -> Result<Vec<TransactionReceipt>> {
+        let mut requests = Vec::with_capacity(txs.len());
+
+        for tx in txs {
+            requests.push(self.client.get_transaction_receipt(tx));
+        }
+
+        let results = try_join_all(requests).await?;
+        let receipts = results.into_iter().map(|r| r.receipt).collect();
+
+        Ok(receipts)
     }
 }
 
@@ -229,6 +271,7 @@ async fn prepare_txs(
             .spawn()
             .send()
             .await?;
+
         TxWaiter::new(spawn_call.transaction_hash, provider)
             .await
             .unwrap();

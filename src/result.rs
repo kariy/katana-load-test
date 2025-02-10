@@ -87,6 +87,30 @@ impl ResultsStorage {
                 },
             },
             Metrics {
+                metric: "SPS".to_string(),
+                current: format!("{:.2}", current.metrics.sps),
+                previous: match &previous {
+                    Some(prev) => format!("{:.2}", prev.metrics.sps),
+                    None => "-".to_string(),
+                },
+                change: match &previous {
+                    Some(prev) => {
+                        let change =
+                            (current.metrics.sps - prev.metrics.sps) / prev.metrics.sps * 100.0;
+                        format!(
+                            "{:.2}% {}",
+                            change.abs(),
+                            if change >= 0.0 {
+                                "increase"
+                            } else {
+                                "decrease"
+                            }
+                        )
+                    }
+                    None => "-".to_string(),
+                },
+            },
+            Metrics {
                 metric: "Latency".to_string(),
                 current: format!("{:?}", current.metrics.avg_latency),
                 previous: match &previous {
