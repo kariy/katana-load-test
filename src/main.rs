@@ -110,8 +110,6 @@ impl Benchmarker {
 
         let submission_duration = submission_start.elapsed();
 
-        dbg!(pending_txs.len());
-
         // Poll for completion of last transaction only
         let last_tx = pending_txs.last();
 
