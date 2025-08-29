@@ -18,9 +18,11 @@ url = "2.5.4"
 katana-node-bindings = { git = "https://github.com/dojoengine/dojo" }
 katana-primitives = { git = "https://github.com/dojoengine/dojo" }
 dojo-utils = { git = "https://github.com/dojoengine/dojo" }
-cainome = { git = "https://github.com/cartridge-gg/cainome", tag = "v0.4.12", features = [
+cainome = { git = "https://github.com/cartridge-gg/cainome", tag = "v0.5.0", features = [
 	"abigen-rs",
 ] }
 jiff = { version = "0.1.29", features = ["serde"] }
 serde_json = { version = "1.0.138", features = ["arbitrary_precision"] }
 tabled = "0.17.0"
+tracing = "0.1.41"
+tracing-subscriber = "0.3.19"

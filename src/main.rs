@@ -28,6 +28,7 @@ use starknet::providers::JsonRpcClient;
 use starknet::providers::Provider;
 use starknet::signers::{LocalWallet, Signer};
 use tokio;
+use tracing::info;
 use url::Url;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -88,7 +89,7 @@ impl Benchmarker {
         )
         .await?;
 
-        println!("sending {} txs", txs.len());
+        info!(txs_count = txs.len(), "Benchmark started");
 
         let start_time = Instant::now();
         let submission_start = Instant::now();
@@ -123,11 +124,15 @@ impl Benchmarker {
         }
 
         let total_duration = start_time.elapsed();
+        let total_duration_secs = total_duration.as_secs_f64();
+
+        info!(duration = total_duration_secs, "Benchmark completed");
 
         // Calculate steps per second
-        let tx_hashes = pending_txs.iter().map(|(h, _)| *h).collect::<Vec<TxHash>>();
-        let total_steps = self.total_steps(&tx_hashes).await?;
-        let sps = total_steps as f64 / total_duration.as_secs_f64();
+        // let tx_hashes = pending_txs.iter().map(|(h, _)| *h).collect::<Vec<TxHash>>();
+        // let total_steps = self.total_steps(&tx_hashes).await?;
+        // let total_steps = self.total_steps(&tx_hashes).await?;
+        // let sps = total_steps as f64 / total_duration_secs;
 
         // Use submission duration divided by number of transactions for avg latency
         let avg_latency = if self.config.total_transactions > 0 {
@@ -136,11 +141,11 @@ impl Benchmarker {
             Duration::from_secs(0)
         };
 
-        let tps = self.config.total_transactions as f64 / total_duration.as_secs_f64();
+        let tps = self.config.total_transactions as f64 / total_duration_secs;
 
         Ok(BenchmarkMetrics {
             tps,
-            sps,
+            sps: 0.0,
             avg_latency,
             total_duration,
             total_transactions: self.config.total_transactions,
@@ -202,6 +207,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     use katana_node_bindings::Katana;
     use std::env;
 
+    tracing_subscriber::fmt().init();
+
     let args = Cli::parse();
 
     let katana = if let Ok(path) = env::var("KATANA_PATH") {
@@ -223,7 +230,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let metrics = benchmarker.run_benchmark().await?;
 
     let result = BenchmarkResult { metrics };
-
     let storage = ResultsStorage::new(PathBuf::from("benchmark_results"));
     storage.save_result(result.clone()).await?;
 
@@ -242,12 +248,14 @@ async fn prepare_txs(
     accounts: &[katana_node_bindings::Account],
     total_txs: u64,
 ) -> Result<Vec<BroadcastedInvokeTransaction>> {
+    info!("Preparing transactions");
+
     let batch_size = accounts.len();
     let num_batches = (total_txs as usize + batch_size - 1) / batch_size; // Round up division
     let mut transactions = Vec::with_capacity(num_batches * batch_size);
 
     let chain_id = provider.chain_id().await?;
-    let contract = felt!("0x298027bd13daad6661d360d69e224714e968834943f61a3474b8c34fc2265e3");
+    let contract = felt!("0x1455a4751d41c1daa6a672c46037c1df81d50fa9daeea653e8946026f6653e2");
 
     // Create SenderAccounts
     let mut sender_accounts = Vec::with_capacity(accounts.len());

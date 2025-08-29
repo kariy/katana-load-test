@@ -577,8 +577,8 @@ dependencies = [
 
 [[package]]
 name = "cainome"
-version = "0.4.11"
-source = "git+https://github.com/cartridge-gg/cainome?tag=v0.4.12#d83de9302e77a5eb1bad3c827bf91b96614d0ebe"
+version = "0.5.0"
+source = "git+https://github.com/cartridge-gg/cainome?tag=v0.5.0#deed7504bd9a486995e5ed5b60435652e5ae2508"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -593,7 +593,7 @@ dependencies = [
  "convert_case 0.6.0",
  "serde",
  "serde_json",
- "starknet 0.12.0",
+ "starknet 0.13.0",
  "starknet-types-core",
  "thiserror 1.0.69",
  "tracing",
@@ -604,19 +604,19 @@ dependencies = [
 [[package]]
 name = "cainome-cairo-serde"
 version = "0.1.0"
-source = "git+https://github.com/cartridge-gg/cainome?tag=v0.4.12#d83de9302e77a5eb1bad3c827bf91b96614d0ebe"
+source = "git+https://github.com/cartridge-gg/cainome?tag=v0.5.0#deed7504bd9a486995e5ed5b60435652e5ae2508"
 dependencies = [
  "num-bigint",
  "serde",
  "serde_with",
- "starknet 0.12.0",
+ "starknet 0.13.0",
  "thiserror 1.0.69",
 ]
 
 [[package]]
 name = "cainome-cairo-serde-derive"
 version = "0.1.0"
-source = "git+https://github.com/cartridge-gg/cainome?tag=v0.4.12#d83de9302e77a5eb1bad3c827bf91b96614d0ebe"
+source = "git+https://github.com/cartridge-gg/cainome?tag=v0.5.0#deed7504bd9a486995e5ed5b60435652e5ae2508"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -627,12 +627,12 @@ dependencies = [
 [[package]]
 name = "cainome-parser"
 version = "0.1.0"
-source = "git+https://github.com/cartridge-gg/cainome?tag=v0.4.12#d83de9302e77a5eb1bad3c827bf91b96614d0ebe"
+source = "git+https://github.com/cartridge-gg/cainome?tag=v0.5.0#deed7504bd9a486995e5ed5b60435652e5ae2508"
 dependencies = [
  "convert_case 0.6.0",
  "quote",
  "serde_json",
- "starknet 0.12.0",
+ "starknet 0.13.0",
  "syn 2.0.98",
  "thiserror 1.0.69",
 ]
@@ -640,7 +640,7 @@ dependencies = [
 [[package]]
 name = "cainome-rs"
 version = "0.1.0"
-source = "git+https://github.com/cartridge-gg/cainome?tag=v0.4.12#d83de9302e77a5eb1bad3c827bf91b96614d0ebe"
+source = "git+https://github.com/cartridge-gg/cainome?tag=v0.5.0#deed7504bd9a486995e5ed5b60435652e5ae2508"
 dependencies = [
  "anyhow",
  "cainome-cairo-serde",
@@ -650,7 +650,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "serde_json",
- "starknet 0.12.0",
+ "starknet 0.13.0",
  "syn 2.0.98",
  "thiserror 1.0.69",
 ]
@@ -658,7 +658,7 @@ dependencies = [
 [[package]]
 name = "cainome-rs-macro"
 version = "0.1.0"
-source = "git+https://github.com/cartridge-gg/cainome?tag=v0.4.12#d83de9302e77a5eb1bad3c827bf91b96614d0ebe"
+source = "git+https://github.com/cartridge-gg/cainome?tag=v0.5.0#deed7504bd9a486995e5ed5b60435652e5ae2508"
 dependencies = [
  "anyhow",
  "cainome-cairo-serde",
@@ -668,7 +668,7 @@ dependencies = [
  "proc-macro2",
  "quote",
  "serde_json",
- "starknet 0.12.0",
+ "starknet 0.13.0",
  "syn 2.0.98",
  "thiserror 1.0.69",
 ]
@@ -2859,6 +2859,8 @@ dependencies = [
  "starknet 0.13.0",
  "tabled",
  "tokio",
+ "tracing",
+ "tracing-subscriber",
  "url",
 ]
 
